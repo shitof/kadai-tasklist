@@ -12,8 +12,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import models.Message;
-import models.validators.MessageValidator;
+import models.Tasks;
+import models.validators.TasksValidator;
 import utils.DBUtil;
 
 /**
@@ -36,10 +36,9 @@ public class CreateServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String _token = request.getParameter("_token");
         if(_token != null && _token.equals(request.getSession().getId())) {
-            EntityManager em = DBUtil.createEntityManager();
-            em.getTransaction().begin();
 
-            Message m = new Message();
+
+            Tasks m = new Tasks();
 
             String title = request.getParameter("title");
             m.setTitle(title);
@@ -52,26 +51,28 @@ public class CreateServlet extends HttpServlet {
             m.setUpdated_at(currentTime);       // 更新日時のみ上書き
 
             // バリデーションを実行してエラーがあったら編集画面のフォームに戻る
-            List<String> errors = MessageValidator.validate(m);
+            List<String> errors = TasksValidator.validate(m);
             if(errors.size() > 0) {
-                em.close();
 
                 // フォームに初期値を設定、さらにエラーメッセージを送る
                 request.setAttribute("_token", request.getSession().getId());
-                request.setAttribute("message", m);
+                request.setAttribute("tasks", m);
                 request.setAttribute("errors", errors);
 
-                RequestDispatcher rd = request.getRequestDispatcher("/WEB-INF/views/messages/edit.jsp");
+                RequestDispatcher rd = request.getRequestDispatcher("/WEB-INF/views/tasks/edit.jsp");
                 rd.forward(request, response);
             } else {
+                EntityManager em = DBUtil.createEntityManager();
                 // データベースを更新
                 em.getTransaction().begin();
+                em.persist(m);
                 em.getTransaction().commit();
-                request.getSession().setAttribute("flush", "更新が完了しました。");
                 em.close();
+                request.getSession().setAttribute("flush", "更新が完了しました。");
+
 
                 // セッションスコープ上の不要になったデータを削除
-                request.getSession().removeAttribute("message_id");
+                request.getSession().removeAttribute("task_id");
 
                 // indexページへリダイレクト
                 response.sendRedirect(request.getContextPath() + "/index");
